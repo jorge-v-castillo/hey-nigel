@@ -1,0 +1,40 @@
+{
+  "id": "fixture-cactus-wren",
+  "name": "Cactus Wren Fixture Links",
+  "location": "Fixture Data — quick 3-hole smoke test course",
+  "teeSets": [
+    { "name": "White", "rating": 68.0, "slope": 118, "totalYardage": 1020 }
+  ],
+  "holes": [
+    {
+      "number": 1, "par": 4,
+      "teeBoxes": [{ "name": "White", "coordinate": { "latitude": 33.60000, "longitude": -111.95000 } }],
+      "green": {
+        "front": { "latitude": 33.602762, "longitude": -111.95000 },
+        "center": { "latitude": 33.602886, "longitude": -111.95000 },
+        "back": { "latitude": 33.603010, "longitude": -111.95000 }
+      },
+      "yardageByTee": { "White": 350 }
+    },
+    {
+      "number": 2, "par": 3,
+      "teeBoxes": [{ "name": "White", "coordinate": { "latitude": 33.603134, "longitude": -111.95000 } }],
+      "green": {
+        "front": { "latitude": 33.604329, "longitude": -111.95000 },
+        "center": { "latitude": 33.604453, "longitude": -111.95000 },
+        "back": { "latitude": 33.604577, "longitude": -111.95000 }
+      },
+      "yardageByTee": { "White": 160 }
+    },
+    {
+      "number": 3, "par": 5,
+      "teeBoxes": [{ "name": "White", "coordinate": { "latitude": 33.604701, "longitude": -111.95000 } }],
+      "green": {
+        "front": { "latitude": 33.608782, "longitude": -111.95000 },
+        "center": { "latitude": 33.608906, "longitude": -111.95000 },
+        "back": { "latitude": 33.609030, "longitude": -111.95000 }
+      },
+      "yardageByTee": { "White": 510 }
+    }
+  ]
+}

@@ -1,0 +1,100 @@
+{
+  "id": "fixture-sunridge",
+  "name": "Sunridge Fixture Golf Club",
+  "location": "Fixture Data — Scottsdale, AZ area",
+  "teeSets": [
+    { "name": "White", "rating": 70.2, "slope": 124, "totalYardage": 3120 }
+  ],
+  "holes": [
+    {
+      "number": 1, "par": 4,
+      "teeBoxes": [{ "name": "White", "coordinate": { "latitude": 33.50000, "longitude": -111.90000 } }],
+      "green": {
+        "front": { "latitude": 33.503175, "longitude": -111.90000 },
+        "center": { "latitude": 33.503299, "longitude": -111.90000 },
+        "back": { "latitude": 33.503423, "longitude": -111.90000 }
+      },
+      "yardageByTee": { "White": 400 }
+    },
+    {
+      "number": 2, "par": 4,
+      "teeBoxes": [{ "name": "White", "coordinate": { "latitude": 33.503546, "longitude": -111.90000 } }],
+      "green": {
+        "front": { "latitude": 33.506556, "longitude": -111.90000 },
+        "center": { "latitude": 33.506680, "longitude": -111.90000 },
+        "back": { "latitude": 33.506804, "longitude": -111.90000 }
+      },
+      "yardageByTee": { "White": 380 }
+    },
+    {
+      "number": 3, "par": 3,
+      "teeBoxes": [{ "name": "White", "coordinate": { "latitude": 33.506927, "longitude": -111.90000 } }],
+      "green": {
+        "front": { "latitude": 33.508164, "longitude": -111.90000 },
+        "center": { "latitude": 33.508288, "longitude": -111.90000 },
+        "back": { "latitude": 33.508412, "longitude": -111.90000 }
+      },
+      "yardageByTee": { "White": 165 }
+    },
+    {
+      "number": 4, "par": 5,
+      "teeBoxes": [{ "name": "White", "coordinate": { "latitude": 33.508535, "longitude": -111.90000 } }],
+      "green": {
+        "front": { "latitude": 33.512864, "longitude": -111.90000 },
+        "center": { "latitude": 33.512988, "longitude": -111.90000 },
+        "back": { "latitude": 33.513112, "longitude": -111.90000 }
+      },
+      "yardageByTee": { "White": 540 }
+    },
+    {
+      "number": 5, "par": 4,
+      "teeBoxes": [{ "name": "White", "coordinate": { "latitude": 33.513236, "longitude": -111.90000 } }],
+      "green": {
+        "front": { "latitude": 33.516493, "longitude": -111.90000 },
+        "center": { "latitude": 33.516617, "longitude": -111.90000 },
+        "back": { "latitude": 33.516741, "longitude": -111.90000 }
+      },
+      "yardageByTee": { "White": 410 }
+    },
+    {
+      "number": 6, "par": 3,
+      "teeBoxes": [{ "name": "White", "coordinate": { "latitude": 33.516864, "longitude": -111.90000 } }],
+      "green": {
+        "front": { "latitude": 33.518183, "longitude": -111.90000 },
+        "center": { "latitude": 33.518307, "longitude": -111.90000 },
+        "back": { "latitude": 33.518431, "longitude": -111.90000 }
+      },
+      "yardageByTee": { "White": 175 }
+    },
+    {
+      "number": 7, "par": 3,
+      "teeBoxes": [{ "name": "White", "coordinate": { "latitude": 33.518555, "longitude": -111.90000 } }],
+      "green": {
+        "front": { "latitude": 33.519626, "longitude": -111.90000 },
+        "center": { "latitude": 33.519750, "longitude": -111.90000 },
+        "back": { "latitude": 33.519874, "longitude": -111.90000 }
+      },
+      "yardageByTee": { "White": 145 }
+    },
+    {
+      "number": 8, "par": 5,
+      "teeBoxes": [{ "name": "White", "coordinate": { "latitude": 33.519997, "longitude": -111.90000 } }],
+      "green": {
+        "front": { "latitude": 33.524162, "longitude": -111.90000 },
+        "center": { "latitude": 33.524286, "longitude": -111.90000 },
+        "back": { "latitude": 33.524410, "longitude": -111.90000 }
+      },
+      "yardageByTee": { "White": 520 }
+    },
+    {
+      "number": 9, "par": 4,
+      "teeBoxes": [{ "name": "White", "coordinate": { "latitude": 33.524533, "longitude": -111.90000 } }],
+      "green": {
+        "front": { "latitude": 33.527666, "longitude": -111.90000 },
+        "center": { "latitude": 33.527790, "longitude": -111.90000 },
+        "back": { "latitude": 33.527914, "longitude": -111.90000 }
+      },
+      "yardageByTee": { "White": 395 }
+    }
+  ]
+}
