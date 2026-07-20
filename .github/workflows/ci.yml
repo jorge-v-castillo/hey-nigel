@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test-packages:
+    name: Test Swift packages
+    runs-on: macos-15
+    strategy:
+      matrix:
+        package: [HeyNigelCore, HeyNigelCourseData, HeyNigelWeather]
+    steps:
+      - uses: actions/checkout@v4
+      - name: swift test (${{ matrix.package }})
+        working-directory: Packages/${{ matrix.package }}
+        run: swift test
+
+  build-app:
+    name: Build iOS app (Simulator)
+    runs-on: macos-15
+    needs: test-packages
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Show available simulators
+        run: xcrun simctl list devices available iOS | head -30
+      - name: Build for iOS Simulator
+        run: |
+          xcodebuild build \
+            -project HeyNigel.xcodeproj \
+            -scheme HeyNigel \
+            -destination "generic/platform=iOS Simulator"
