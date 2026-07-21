@@ -90,4 +90,31 @@ final class RoundSessionManager {
             spokenPhrase = "Couldn't get wind data right now."
         }
     }
+
+    /// Answers a voice question (from either the AirPods or, later, the Siri
+    /// path) using the same `CaddyBrain` + `ResponsePhraser` the on-screen
+    /// display uses — one source of truth for what Nigel says. `queryType`
+    /// isn't used to shorten the phrase yet (v1 always speaks the full
+    /// distance-and-club sentence); that's a reasonable simplification since
+    /// there's only one phrasing to maintain instead of three.
+    func answerQuery(_ query: CaddyQuery) async -> String? {
+        guard let round = activeRound, let location = currentLocation else { return nil }
+        let holeNumber = query.holeOverride ?? round.currentHoleNumber
+        guard let hole = round.courseSnapshot.hole(number: holeNumber) else {
+            return "I don't have hole \(holeNumber) for this course."
+        }
+        do {
+            let wind = try await weatherProvider.currentWind(at: hole.green.center)
+            let result = caddyBrain.recommendation(
+                playerLocation: location,
+                green: hole.green,
+                target: query.target,
+                wind: wind,
+                clubs: clubProfile
+            )
+            return responsePhraser.phrase(hole: hole.number, target: query.target, recommendation: result)
+        } catch {
+            return "I couldn't get wind data just now."
+        }
+    }
 }

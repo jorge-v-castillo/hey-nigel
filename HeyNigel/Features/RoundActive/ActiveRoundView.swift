@@ -6,6 +6,8 @@ import HeyNigelCourseData
 struct ActiveRoundView: View {
     @Query private var preferences: [UserPreferencesRecord]
     @State private var roundSession: RoundSessionManager
+    @State private var voiceCoordinator: VoiceInputCoordinator
+    @State private var airPodsController = AirPodsRemoteController()
     @State private var isStarting = false
     @State private var startError: String?
 
@@ -14,11 +16,16 @@ struct ActiveRoundView: View {
     init(courseDataProvider: HeyNigelCourseData.CourseDataProvider) {
         self.courseDataProvider = courseDataProvider
         let deps = AppDependencies.shared
-        _roundSession = State(initialValue: RoundSessionManager(
+        let session = RoundSessionManager(
             caddyBrain: deps.caddyBrain,
             weatherProvider: deps.weatherProvider,
             responsePhraser: deps.responsePhraser,
             locationManager: LocationManager()
+        )
+        _roundSession = State(initialValue: session)
+        _voiceCoordinator = State(initialValue: VoiceInputCoordinator(
+            synthesizer: SpeechSynthesizerService(),
+            onQuery: { query in await session.answerQuery(query) }
         ))
     }
 
@@ -72,12 +79,53 @@ struct ActiveRoundView: View {
                 .foregroundStyle(.secondary)
         }
 
+        voiceStatusText
+
+        Button(voiceButtonTitle) {
+            voiceCoordinator.startListening()
+        }
+        .buttonStyle(.borderedProminent)
+        .disabled(voiceCoordinator.state != .idle)
+
         Spacer()
 
         Button("End Round") {
+            voiceCoordinator.cancelListening()
+            airPodsController.stop()
             roundSession.endRound()
         }
         .buttonStyle(.bordered)
+    }
+
+    @ViewBuilder
+    private var voiceStatusText: some View {
+        switch voiceCoordinator.state {
+        case .idle:
+            Text("Press the AirPods stem, or tap below, to ask a question.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        case .listening:
+            Text("Listening\u{2026} \(voiceCoordinator.lastTranscript ?? "")")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        case .processing:
+            Text("Thinking\u{2026}")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        case .speaking:
+            Text("Speaking\u{2026}")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var voiceButtonTitle: String {
+        switch voiceCoordinator.state {
+        case .idle: return "Hold to Talk"
+        case .listening: return "Listening…"
+        case .processing: return "Thinking…"
+        case .speaking: return "Speaking…"
+        }
     }
 
     private func startRound() async {
@@ -97,6 +145,8 @@ struct ActiveRoundView: View {
                 startingNine: prefs.startingNine ?? .front,
                 clubProfile: prefs.clubProfile
             )
+            let coordinator = voiceCoordinator
+            airPodsController.start { coordinator.startListening() }
         } catch {
             startError = "Couldn't load that course. Try again."
         }
