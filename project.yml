@@ -23,19 +23,21 @@ targets:
       - package: HeyNigelCore
       - package: HeyNigelCourseData
       - package: HeyNigelWeather
+    info:
+      path: HeyNigel/Info.plist
+      properties:
+        UILaunchScreen: {}
+        NSLocationWhenInUseUsageDescription: "Nigel uses your location to detect which hole you're on and calculate distances to the green."
+        NSLocationAlwaysAndWhenInUseUsageDescription: "Nigel tracks your location during a round, including while your phone is locked or in your pocket, so hole detection stays accurate the whole round."
+        NSMicrophoneUsageDescription: "Nigel listens for your question after you press the AirPods control."
+        NSSpeechRecognitionUsageDescription: "Nigel transcribes your spoken question to figure out what you're asking."
+        UIBackgroundModes:
+          - location
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.reneRodriguez.heynigel
         SWIFT_VERSION: "6.0"
         TARGETED_DEVICE_FAMILY: "1"
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
-        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Nigel uses your location to detect which hole you're on and calculate distances to the green."
-        INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription: "Nigel tracks your location during a round, including while your phone is locked or in your pocket, so hole detection stays accurate the whole round."
-        INFOPLIST_KEY_NSMicrophoneUsageDescription: "Nigel listens for your question after you press the AirPods control."
-        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "Nigel transcribes your spoken question to figure out what you're asking."
-        INFOPLIST_KEY_NSSiriUsageDescription: "Nigel responds to Siri requests like \"Ask Nigel my distance.\""
 
 schemes:
   HeyNigel:
