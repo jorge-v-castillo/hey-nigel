@@ -39,12 +39,26 @@ targets:
         SWIFT_VERSION: "6.0"
         TARGETED_DEVICE_FAMILY: "1"
 
+  HeyNigelUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: HeyNigelUITests
+    dependencies:
+      - target: HeyNigel
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        TEST_TARGET_NAME: HeyNigel
+
 schemes:
   HeyNigel:
     build:
       targets:
         HeyNigel: all
+        HeyNigelUITests: [test]
     test:
-      targets: []
+      targets:
+        - HeyNigelUITests
     run:
       config: Debug

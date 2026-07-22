@@ -13,15 +13,15 @@ struct ClubYardagesView: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
 
-            yardageField(label: "Driver", text: Binding(
+            yardageField(label: "Driver", identifier: "driverYardageField", text: Binding(
                 get: { viewModel.driverYardageText },
                 set: { viewModel.driverYardageText = $0 }
             ))
-            yardageField(label: "7 Iron", text: Binding(
+            yardageField(label: "7 Iron", identifier: "sevenIronYardageField", text: Binding(
                 get: { viewModel.sevenIronYardageText },
                 set: { viewModel.sevenIronYardageText = $0 }
             ))
-            yardageField(label: "Wedge", text: Binding(
+            yardageField(label: "Wedge", identifier: "wedgeYardageField", text: Binding(
                 get: { viewModel.wedgeYardageText },
                 set: { viewModel.wedgeYardageText = $0 }
             ))
@@ -36,12 +36,13 @@ struct ClubYardagesView: View {
         .padding()
     }
 
-    private func yardageField(label: String, text: Binding<String>) -> some View {
+    private func yardageField(label: String, identifier: String, text: Binding<String>) -> some View {
         HStack {
             Text(label).frame(width: 90, alignment: .leading)
             TextField("Yards", text: text)
                 .textFieldStyle(.roundedBorder)
                 .keyboardType(.numberPad)
+                .accessibilityIdentifier(identifier)
         }
         .padding(.horizontal)
     }

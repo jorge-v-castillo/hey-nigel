@@ -38,3 +38,49 @@ jobs:
             -project HeyNigel.xcodeproj \
             -scheme HeyNigel \
             -destination "generic/platform=iOS Simulator"
+
+  screenshot-walkthrough:
+    name: Onboarding screenshot walkthrough
+    runs-on: macos-15
+    needs: build-app
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Pick an available iPhone simulator
+        id: sim
+        run: |
+          DEVICE_NAME=$(xcrun simctl list devices available -j | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+for devices in data['devices'].values():
+    for d in devices:
+        if 'iPhone' in d['name']:
+            print(d['name'])
+            sys.exit(0)
+")
+          echo "Using simulator: $DEVICE_NAME"
+          echo "device_name=$DEVICE_NAME" >> "$GITHUB_OUTPUT"
+      - name: Run onboarding UI test
+        run: |
+          xcodebuild test \
+            -project HeyNigel.xcodeproj \
+            -scheme HeyNigel \
+            -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.device_name }}" \
+            -resultBundlePath TestResults.xcresult
+      - name: Export screenshots from test results
+        if: always()
+        run: |
+          mkdir -p screenshots
+          xcrun xcresulttool get test-results attachments \
+            --path TestResults.xcresult \
+            --output-path screenshots
+      - name: Upload screenshots artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: onboarding-screenshots
+          path: screenshots
+          if-no-files-found: warn
