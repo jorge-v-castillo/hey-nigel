@@ -13,6 +13,7 @@ final class OnboardingWalkthroughUITests: XCTestCase {
         continueAfterFailure = false
     }
 
+    @MainActor
     func testOnboardingDashboardAndRoundSetupWalkthrough() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-UITestReset"]
@@ -88,6 +89,7 @@ final class OnboardingWalkthroughUITests: XCTestCase {
     /// Waits for the manual-fallback text field to appear, types the given
     /// text, submits, then confirms the review step — the standard path for
     /// every free-text/number question in the flow.
+    @MainActor
     private func answerGuidedPrompt(_ app: XCUIApplication, text: String, screenshotName: String?, timeout: TimeInterval? = nil) {
         let field = app.textFields["guidedPromptTextField"]
         XCTAssertTrue(field.waitForExistence(timeout: timeout ?? promptTimeout))
@@ -103,6 +105,7 @@ final class OnboardingWalkthroughUITests: XCTestCase {
         confirmButton.tap()
     }
 
+    @MainActor
     private func attach(_ screenshot: XCUIScreenshot, name: String) {
         let attachment = XCTAttachment(screenshot: screenshot)
         attachment.name = name
