@@ -6,6 +6,11 @@ import SwiftData
 /// single-device, so there's exactly one `UserPreferencesRecord`: callers
 /// fetch the first one and create it if missing, rather than modeling
 /// multiple profiles.
+///
+/// Course/tee/hole-count are NOT stored here — onboarding no longer collects
+/// them. They're asked fresh at the start of every round instead (see
+/// `RoundSetupCoordinator`), since the course you're playing changes far more
+/// often than your name or your clubs do.
 @Model
 final class ClubYardageRecord {
     var name: String
@@ -22,32 +27,24 @@ final class ClubYardageRecord {
 @Model
 final class UserPreferencesRecord {
     var onboardingCompleted: Bool
-    var selectedCourseID: String?
-    var selectedCourseName: String?
-    var selectedTeeName: String?
-    var holeCount: Int
-    /// Raw storage for `Nine?` — SwiftData doesn't need Core's enum, so this
-    /// stays a plain string and gets bridged in DomainMapping.swift.
-    var startingNineRaw: String?
+    var fullName: String?
+    var nickname: String?
+    var email: String?
 
     @Relationship(deleteRule: .cascade)
     var clubYardages: [ClubYardageRecord]
 
     init(
         onboardingCompleted: Bool = false,
-        selectedCourseID: String? = nil,
-        selectedCourseName: String? = nil,
-        selectedTeeName: String? = nil,
-        holeCount: Int = 18,
-        startingNineRaw: String? = nil,
+        fullName: String? = nil,
+        nickname: String? = nil,
+        email: String? = nil,
         clubYardages: [ClubYardageRecord] = []
     ) {
         self.onboardingCompleted = onboardingCompleted
-        self.selectedCourseID = selectedCourseID
-        self.selectedCourseName = selectedCourseName
-        self.selectedTeeName = selectedTeeName
-        self.holeCount = holeCount
-        self.startingNineRaw = startingNineRaw
+        self.fullName = fullName
+        self.nickname = nickname
+        self.email = email
         self.clubYardages = clubYardages
     }
 }

@@ -13,15 +13,20 @@ struct ReadyView: View {
                 .foregroundStyle(.green)
             Text("You're all set")
                 .font(.title.bold())
+            Text("I've got everything I need — let's head to your dashboard.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
 
             VStack(alignment: .leading, spacing: 8) {
-                summaryRow("Course", viewModel.selectedCourse?.name ?? "—")
-                summaryRow("Tees", viewModel.selectedTeeName ?? "—")
-                summaryRow("Holes", "\(viewModel.holeCount), starting \(viewModel.startingNine == .front ? "front" : "back") 9")
-                if let profile = viewModel.parsedClubProfile {
-                    summaryRow("Driver", "\(Int(profile.clubs.first { $0.name == "Driver" }?.averageCarryYards ?? 0)) yds")
-                    summaryRow("7 Iron", "\(Int(profile.clubs.first { $0.name == "7 Iron" }?.averageCarryYards ?? 0)) yds")
-                    summaryRow("Wedge", "\(Int(profile.clubs.first { $0.name == "Wedge" }?.averageCarryYards ?? 0)) yds")
+                summaryRow("Name", viewModel.fullName.isEmpty ? "—" : viewModel.fullName)
+                if let nickname = viewModel.nickname {
+                    summaryRow("Nickname", nickname)
+                }
+                summaryRow("Clubs added", "\(viewModel.clubDrafts.count) of \(viewModel.totalClubCount)")
+                ForEach(viewModel.clubDrafts, id: \.name) { club in
+                    summaryRow(club.name, "\(Int(club.averageCarryYards)) yds")
                 }
             }
             .padding()
@@ -30,7 +35,7 @@ struct ReadyView: View {
 
             Spacer()
 
-            Button("Let's Play") { onStart() }
+            Button("Continue") { onStart() }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
         }

@@ -39,4 +39,19 @@ public struct MockCourseDataProvider: CourseDataProvider {
         }
         return course
     }
+
+    /// Placeholder nearest-course logic: straight-line distance to each
+    /// course's hole-1 tee. Both bundled fixtures are in Scottsdale, AZ, so
+    /// this only resolves sensibly near there — a real vendor would run an
+    /// actual geospatial "courses near me" query.
+    public func nearestCourse(to coordinate: Coordinate) async throws -> CourseSummary? {
+        let distances: [(course: Course, distance: Double)] = courses.compactMap { course in
+            guard let teeCoordinate = course.holes.first(where: { $0.number == 1 })?.teeBoxes.first?.coordinate else {
+                return nil
+            }
+            return (course, Geodesy.distanceYards(coordinate, teeCoordinate))
+        }
+        guard let nearest = distances.min(by: { $0.distance < $1.distance }) else { return nil }
+        return CourseSummary(id: nearest.course.id, name: nearest.course.name, location: nearest.course.location)
+    }
 }

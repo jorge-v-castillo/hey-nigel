@@ -44,4 +44,27 @@ struct MockCourseDataProviderTests {
             _ = try await provider.fetchCourseDetail(id: "does-not-exist")
         }
     }
+
+    @Test("nearestCourse resolves to Sunridge when the coordinate is near its hole-1 tee")
+    func nearestCourseSunridge() async throws {
+        let provider = MockCourseDataProvider()
+        let nearby = Coordinate(latitude: 33.5001, longitude: -111.9001)
+        let result = try await provider.nearestCourse(to: nearby)
+        #expect(result?.id == "fixture-sunridge")
+    }
+
+    @Test("nearestCourse resolves to Cactus Wren when the coordinate is near its hole-1 tee")
+    func nearestCourseCactusWren() async throws {
+        let provider = MockCourseDataProvider()
+        let nearby = Coordinate(latitude: 33.6001, longitude: -111.9501)
+        let result = try await provider.nearestCourse(to: nearby)
+        #expect(result?.id == "fixture-cactus-wren")
+    }
+
+    @Test("nearestCourse returns nil when there are no courses")
+    func nearestCourseEmpty() async throws {
+        let provider = MockCourseDataProvider(courses: [])
+        let result = try await provider.nearestCourse(to: Coordinate(latitude: 0, longitude: 0))
+        #expect(result == nil)
+    }
 }

@@ -1,98 +1,84 @@
 import Foundation
 import SwiftData
 import HeyNigelCore
-import HeyNigelCourseData
 
 @MainActor
 @Observable
 final class OnboardingViewModel {
     var step: OnboardingStep = .welcome
 
-    var searchQuery: String = ""
-    var searchResults: [CourseSummary] = []
-    var isSearching: Bool = false
-    var searchError: String?
-    var selectedCourse: Course?
-
-    var selectedTeeName: String?
-
-    var holeCount: Int = 18
-    var startingNine: Nine = .front
-
-    var driverYardageText: String = ""
-    var sevenIronYardageText: String = ""
-    var wedgeYardageText: String = ""
-
     let permissions: PermissionsManager
+    let guidedPrompt: GuidedVoicePromptCoordinator
 
-    private let courseDataProvider: CourseDataProvider
+    private(set) var fullName: String = ""
+    private(set) var nickname: String?
+    private(set) var clubDrafts: [ClubYardage] = []
+    private(set) var currentClubIndex = 0
+    private(set) var currentClubName: String = ""
 
-    init(courseDataProvider: CourseDataProvider, permissions: PermissionsManager = PermissionsManager()) {
-        self.courseDataProvider = courseDataProvider
+    private let declineWords: Set<String> = ["no", "nope", "none", "nah", "no thanks", "not really"]
+
+    init(guidedPrompt: GuidedVoicePromptCoordinator, permissions: PermissionsManager = PermissionsManager()) {
+        self.guidedPrompt = guidedPrompt
         self.permissions = permissions
     }
 
-    var canAdvanceFromCourseSearch: Bool { selectedCourse != nil }
-    var canAdvanceFromTeeSelection: Bool { selectedTeeName != nil }
-    var canAdvanceFromClubYardages: Bool { parsedClubProfile != nil }
-
-    var parsedClubProfile: PlayerClubProfile? {
-        guard
-            let driver = Double(driverYardageText), driver > 0,
-            let sevenIron = Double(sevenIronYardageText), sevenIron > 0,
-            let wedge = Double(wedgeYardageText), wedge > 0
-        else { return nil }
-        return PlayerClubProfile(clubs: [
-            ClubYardage(name: "Driver", averageCarryYards: driver, order: 0),
-            ClubYardage(name: "7 Iron", averageCarryYards: sevenIron, order: 7),
-            ClubYardage(name: "Wedge", averageCarryYards: wedge, order: 10),
-        ])
-    }
-
-    func search() async {
-        isSearching = true
-        searchError = nil
-        defer { isSearching = false }
-        do {
-            searchResults = try await courseDataProvider.searchCourses(query: searchQuery)
-        } catch {
-            searchResults = []
-            searchError = "Couldn't search courses right now."
-        }
-    }
-
-    func selectCourse(_ summary: CourseSummary) async {
-        do {
-            let course = try await courseDataProvider.fetchCourseDetail(id: summary.id)
-            selectedCourse = course
-            selectedTeeName = course.teeSets.first?.name
-        } catch {
-            searchError = "Couldn't load that course's details."
-        }
-    }
+    var totalClubCount: Int { PlayerClubProfile.requiredOnboardingClubs.count }
 
     func advance() {
         guard let next = step.next else { return }
         step = next
     }
 
-    func back() {
-        guard let previous = step.previous else { return }
-        step = previous
+    func runNameStep() async {
+        let answer = await guidedPrompt.ask("What's your full name?", expecting: .freeText(minWords: 1))
+        if case .text(let name) = answer {
+            fullName = name
+        }
+        advance()
     }
 
-    /// Persists onboarding choices and marks setup complete. Called once from
-    /// the Ready screen; the app's root view then routes to Home based on
-    /// `UserPreferencesRecord.onboardingCompleted`.
+    func runNicknameStep() async {
+        let answer = await guidedPrompt.ask(
+            "Do you have a nickname you'd like me to use instead? If not, just say no.",
+            expecting: .freeText(minWords: 1)
+        )
+        if case .text(let text) = answer, !declineWords.contains(text.lowercased()) {
+            nickname = text
+        }
+        advance()
+    }
+
+    /// Walks the 9 required clubs in order, each individually skippable.
+    /// Skipped/unrecognized clubs are simply left out of `clubDrafts` —
+    /// `ClubBagInterpolator` fills the gap later from whichever anchors the
+    /// player did provide.
+    func runClubLoop() async {
+        for (index, clubName) in PlayerClubProfile.requiredOnboardingClubs.enumerated() {
+            currentClubIndex = index
+            currentClubName = clubName
+            let answer = await guidedPrompt.ask(
+                "About how far do you hit your \(clubName)? Say the yardage, or say skip if you don't carry one.",
+                expecting: .number(range: 20...400)
+            )
+            if case .number(let yards) = answer {
+                clubDrafts.append(ClubYardage(name: clubName, averageCarryYards: yards, order: index))
+            }
+        }
+        advance()
+    }
+
+    func skipCurrentClub() {
+        guidedPrompt.skip()
+    }
+
+    var canFinishOnboarding: Bool { !clubDrafts.isEmpty }
+
     func complete(modelContext: ModelContext) {
-        guard let course = selectedCourse, let tee = selectedTeeName, let profile = parsedClubProfile else { return }
         let record = UserPreferencesStore.fetchOrCreate(in: modelContext)
-        record.selectedCourseID = course.id
-        record.selectedCourseName = course.name
-        record.selectedTeeName = tee
-        record.holeCount = holeCount
-        record.startingNine = startingNine
-        record.replaceClubProfile(profile, in: modelContext)
+        record.fullName = fullName
+        record.nickname = nickname
+        record.replaceClubProfile(PlayerClubProfile(clubs: clubDrafts), in: modelContext)
         record.onboardingCompleted = true
         try? modelContext.save()
     }

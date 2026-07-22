@@ -81,4 +81,34 @@ struct NearestHoleDetectorTests {
         #expect(detector.update(location: midpoint) == 1)
         #expect(detector.update(location: midpoint) == 1)
     }
+
+    @Test("overrideCurrentHole jumps directly to the given hole")
+    func overrideJumpsToHole() {
+        let holes = [makeHole(number: 1, latOffset: 0.00), makeHole(number: 2, latOffset: 0.01)]
+        var detector = NearestHoleDetector(holes: holes, startingHoleNumber: 1)
+        detector.overrideCurrentHole(2)
+        #expect(detector.current == 2)
+    }
+
+    @Test("overrideCurrentHole clears a pending in-progress streak")
+    func overrideClearsPendingStreak() {
+        let holes = [makeHole(number: 1, latOffset: 0.00), makeHole(number: 2, latOffset: 0.01)]
+        var detector = NearestHoleDetector(
+            holes: holes,
+            startingHoleNumber: 1,
+            switchMarginYards: 45,
+            requiredConsecutiveUpdates: 3
+        )
+        let nearHole2 = Coordinate(latitude: 0.0098, longitude: 0)
+        #expect(detector.update(location: nearHole2) == 1) // streak 1
+        #expect(detector.update(location: nearHole2) == 1) // streak 2
+
+        detector.overrideCurrentHole(1) // reject the pending switch, roll back
+
+        // Streak should have reset — two more updates near hole 2 shouldn't
+        // be enough to switch (needs 3 in a row from a clean slate).
+        #expect(detector.update(location: nearHole2) == 1)
+        #expect(detector.update(location: nearHole2) == 1)
+        #expect(detector.update(location: nearHole2) == 2) // 3rd since override — switches
+    }
 }

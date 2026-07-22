@@ -57,4 +57,27 @@ struct ClubBagInterpolatorTests {
         #expect(sixIron.averageCarryYards > 150)
         #expect(eightIron.averageCarryYards < 150)
     }
+
+    @Test("a custom club outside the standard template survives into the synthesized bag")
+    func customClubSurvives() {
+        let withCustom = PlayerClubProfile(clubs: [
+            ClubYardage(name: "Driver", averageCarryYards: 230, order: 0),
+            ClubYardage(name: "7 Iron", averageCarryYards: 150, order: 7),
+            ClubYardage(name: "2 Iron", averageCarryYards: 195, order: PlayerClubProfile.nextCustomClubOrder(existingCount: 0)),
+        ])
+        let bag = ClubBagInterpolator().synthesizedBag(from: withCustom)
+        #expect(bag.first { $0.name == "2 Iron" }?.averageCarryYards == 195)
+    }
+
+    @Test("recommendClub can pick a custom club when it's the nearest yardage match")
+    func recommendsCustomClub() {
+        let withCustom = PlayerClubProfile(clubs: [
+            ClubYardage(name: "Driver", averageCarryYards: 230, order: 0),
+            ClubYardage(name: "7 Iron", averageCarryYards: 150, order: 7),
+            ClubYardage(name: "2 Iron", averageCarryYards: 195, order: PlayerClubProfile.nextCustomClubOrder(existingCount: 0)),
+        ])
+        let (club, isInterpolated) = ClubBagInterpolator().recommendClub(forEffectiveYards: 195, profile: withCustom)
+        #expect(club.name == "2 Iron")
+        #expect(isInterpolated == false)
+    }
 }

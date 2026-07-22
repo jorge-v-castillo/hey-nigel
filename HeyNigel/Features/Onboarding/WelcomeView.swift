@@ -6,9 +6,9 @@ struct WelcomeView: View {
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
-            Text("Hey Nigel")
+            Text("Hey, Nigel.")
                 .font(.system(size: 44, weight: .bold, design: .rounded))
-            Text("Your voice caddy. Ask for your distance and club, hands-free, right through your AirPods.")
+            Text("Your personal golf caddy. Ask me your distance, club to use, and more all hands free to your earbuds.")
                 .font(.body)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)

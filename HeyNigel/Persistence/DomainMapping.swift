@@ -6,9 +6,12 @@ import HeyNigelCore
 /// plain Codable structs — keeps Core dependency-free while still letting the
 /// rest of the app work in terms of its clean domain types.
 extension UserPreferencesRecord {
-    var startingNine: Nine? {
-        get { startingNineRaw.flatMap(Nine.init(rawValue:)) }
-        set { startingNineRaw = newValue?.rawValue }
+    /// What Nigel calls the player out loud — the nickname if they gave one,
+    /// otherwise their first name.
+    var displayName: String? {
+        if let nickname, !nickname.isEmpty { return nickname }
+        guard let fullName, !fullName.isEmpty else { return nil }
+        return fullName.split(separator: " ").first.map(String.init) ?? fullName
     }
 
     var clubProfile: PlayerClubProfile {

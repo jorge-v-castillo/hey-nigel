@@ -1,66 +1,48 @@
 import SwiftUI
-import SwiftData
 import HeyNigelCore
-import HeyNigelCourseData
 
+/// In-round content only — course/tee/holes setup now lives in
+/// `RoundSetupCoordinator`, triggered from `DashboardView`'s "Begin Round"
+/// button. All dependencies are injected (constructed once by
+/// `DashboardView`) rather than owned here, so there's a single composition
+/// point and a single shared mic session.
 struct ActiveRoundView: View {
-    @Query private var preferences: [UserPreferencesRecord]
-    @State private var roundSession: RoundSessionManager
-    @State private var voiceCoordinator: VoiceInputCoordinator
-    @State private var airPodsController = AirPodsRemoteController()
-    @State private var isStarting = false
-    @State private var startError: String?
-
-    private let courseDataProvider: HeyNigelCourseData.CourseDataProvider
-
-    init(courseDataProvider: HeyNigelCourseData.CourseDataProvider) {
-        self.courseDataProvider = courseDataProvider
-        let deps = AppDependencies.shared
-        let session = RoundSessionManager(
-            caddyBrain: deps.caddyBrain,
-            weatherProvider: deps.weatherProvider,
-            responsePhraser: deps.responsePhraser,
-            locationManager: LocationManager()
-        )
-        _roundSession = State(initialValue: session)
-        _voiceCoordinator = State(initialValue: VoiceInputCoordinator(
-            synthesizer: SpeechSynthesizerService(),
-            onQuery: { query in await session.answerQuery(query) }
-        ))
-    }
-
-    private var prefs: UserPreferencesRecord? { preferences.first }
+    var roundSession: RoundSessionManager
+    var voiceCoordinator: VoiceInputCoordinator
+    var guidedPrompt: GuidedVoicePromptCoordinator
+    let onEndRound: () -> Void
 
     var body: some View {
         VStack(spacing: 20) {
-            if let round = roundSession.activeRound {
+            if let pendingHole = roundSession.pendingHoleChange,
+               voiceCoordinator.state == .idle,
+               guidedPrompt.phase == .idle {
+                GuidedVoicePromptView(coordinator: guidedPrompt)
+                    .task(id: pendingHole) {
+                        await confirmHoleChange(pendingHole: pendingHole)
+                    }
+            } else if let round = roundSession.activeRound {
                 activeRoundContent(round: round)
-            } else {
-                startRoundContent
             }
         }
         .padding()
     }
 
-    @ViewBuilder
-    private var startRoundContent: some View {
-        Spacer()
-        Text("Ready to play \(prefs?.selectedCourseName ?? "your round")?")
-            .font(.title2.bold())
-            .multilineTextAlignment(.center)
-        if let error = startError {
-            Text(error).foregroundStyle(.red)
-        }
-        if isStarting {
-            ProgressView()
-        } else {
-            Button("Start Round") {
-                Task { await startRound() }
+    private func confirmHoleChange(pendingHole: Int) async {
+        let answer = await guidedPrompt.ask("Looks like we're on the next hole, is that correct?", expecting: .yesNo)
+        switch answer {
+        case .yesNo(true):
+            roundSession.confirmPendingHoleChange(accepted: true)
+        case .yesNo(false):
+            let correction = await guidedPrompt.ask("What hole are you actually on?", expecting: .number(range: 1...18))
+            if case .number(let value) = correction {
+                roundSession.confirmPendingHoleChange(accepted: false, correctedHoleNumber: Int(value))
+            } else {
+                roundSession.confirmPendingHoleChange(accepted: false)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
+        default:
+            roundSession.confirmPendingHoleChange(accepted: false)
         }
-        Spacer()
     }
 
     @ViewBuilder
@@ -90,9 +72,7 @@ struct ActiveRoundView: View {
         Spacer()
 
         Button("End Round") {
-            voiceCoordinator.cancelListening()
-            airPodsController.stop()
-            roundSession.endRound()
+            onEndRound()
         }
         .buttonStyle(.bordered)
     }
@@ -122,33 +102,9 @@ struct ActiveRoundView: View {
     private var voiceButtonTitle: String {
         switch voiceCoordinator.state {
         case .idle: return "Hold to Talk"
-        case .listening: return "Listening…"
-        case .processing: return "Thinking…"
-        case .speaking: return "Speaking…"
-        }
-    }
-
-    private func startRound() async {
-        guard let prefs, let courseID = prefs.selectedCourseID, let tee = prefs.selectedTeeName else {
-            startError = "Missing course setup — try onboarding again."
-            return
-        }
-        isStarting = true
-        startError = nil
-        defer { isStarting = false }
-        do {
-            let course = try await courseDataProvider.fetchCourseDetail(id: courseID)
-            roundSession.startRound(
-                course: course,
-                tee: tee,
-                holeCount: prefs.holeCount,
-                startingNine: prefs.startingNine ?? .front,
-                clubProfile: prefs.clubProfile
-            )
-            let coordinator = voiceCoordinator
-            airPodsController.start { coordinator.startListening() }
-        } catch {
-            startError = "Couldn't load that course. Try again."
+        case .listening: return "Listening\u{2026}"
+        case .processing: return "Thinking\u{2026}"
+        case .speaking: return "Speaking\u{2026}"
         }
     }
 }

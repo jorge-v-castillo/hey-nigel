@@ -1,10 +1,12 @@
 import Foundation
 
-/// Onboarding only requires driver/7-iron/wedge yardages (asking for all 14
-/// clubs up front is too much friction). This synthesizes a full virtual bag
-/// from whichever clubs the player *did* provide, using `PlayerClubProfile
-/// .standardOrder` as the slot template and linear interpolation/extrapolation
-/// between known anchors to fill the gaps.
+/// Onboarding walks through `PlayerClubProfile.requiredOnboardingClubs` (9 of
+/// the 14 `standardOrder` slots; each individually skippable). This
+/// synthesizes a full virtual bag from whichever clubs the player *did*
+/// provide, using `standardOrder` as the slot template and linear
+/// interpolation/extrapolation between known anchors to fill the gaps.
+/// Any club outside the template (a custom addition from Settings) is
+/// preserved verbatim rather than interpolated.
 public struct ClubBagInterpolator: Sendable {
     /// Yardage drop assumed per slot when only one club is known (no second
     /// anchor to compute a real gap from).
@@ -17,19 +19,23 @@ public struct ClubBagInterpolator: Sendable {
     public func synthesizedBag(from profile: PlayerClubProfile) -> [ClubYardage] {
         let slots = PlayerClubProfile.standardOrder
         var knownBySlot: [Int: Double] = [:]
+        var customClubs: [ClubYardage] = []
         for club in profile.clubs {
             if let idx = slots.firstIndex(where: { $0.caseInsensitiveCompare(club.name) == .orderedSame }) {
                 knownBySlot[idx] = club.averageCarryYards
+            } else {
+                customClubs.append(club)
             }
         }
         guard !knownBySlot.isEmpty else { return profile.clubs }
 
         let knownIndices = knownBySlot.keys.sorted()
-        return slots.enumerated().map { index, name in
+        let templateBag = slots.enumerated().map { index, name in
             let yardage = knownBySlot[index]
                 ?? interpolatedYardage(forSlot: index, knownIndices: knownIndices, knownBySlot: knownBySlot)
             return ClubYardage(name: name, averageCarryYards: yardage, order: index)
         }
+        return templateBag + customClubs
     }
 
     /// Picks the club whose synthesized bag yardage is closest to `yards`.

@@ -4,9 +4,16 @@ import HeyNigelWeather
 
 /// Owns the active `Round` and recomputes `currentHoleNumber` from GPS via
 /// `NearestHoleDetector` (already unit-tested in HeyNigelCore). This cached
-/// state — not a fresh GPS fix requested on demand — is what the future Siri
-/// and AirPods paths will read, since both need an answer faster than a new
-/// location fix can arrive.
+/// state — not a fresh GPS fix requested on demand — is what the AirPods and
+/// Siri paths read, since both need an answer faster than a new location fix
+/// can arrive.
+///
+/// Hole transitions are staged, not applied silently: when GPS suggests a new
+/// hole, `pendingHoleChange` is set instead of committing directly, and the
+/// owning view drives a spoken "is that correct?" confirmation before
+/// `confirmPendingHoleChange` actually moves the round forward (or rolls it
+/// back). `onRoundEvent` reports round/hole activity to the app layer for
+/// persistence, without this type importing SwiftData itself.
 @MainActor
 @Observable
 final class RoundSessionManager {
@@ -15,14 +22,19 @@ final class RoundSessionManager {
     private(set) var recommendation: ClubRecommendation?
     private(set) var spokenPhrase: String?
     private(set) var isRefreshing = false
+    private(set) var pendingHoleChange: Int?
 
     private var holeDetector: NearestHoleDetector?
     private var clubProfile = PlayerClubProfile(clubs: [])
+    private var holeChangeRollbackTarget: Int?
+    private var holeConfirmedByVoice: [Int: Bool] = [:]
 
     private let caddyBrain: CaddyBrain
     private let weatherProvider: WeatherProvider
     private let responsePhraser: ResponsePhraser
     private let locationManager: LocationManager
+
+    var onRoundEvent: ((RoundEvent) -> Void)?
 
     init(
         caddyBrain: CaddyBrain,
@@ -50,7 +62,11 @@ final class RoundSessionManager {
             currentHoleNumber: startingHoleNumber
         )
         holeDetector = NearestHoleDetector(holes: course.holes, startingHoleNumber: startingHoleNumber)
+        holeConfirmedByVoice = [startingHoleNumber: true]
+        pendingHoleChange = nil
+        holeChangeRollbackTarget = nil
         locationManager.startUpdating()
+        onRoundEvent?(.roundStarted(course: course, tee: tee, holeCount: holeCount, startingNine: startingNine))
     }
 
     func endRound() {
@@ -60,14 +76,51 @@ final class RoundSessionManager {
         currentLocation = nil
         recommendation = nil
         spokenPhrase = nil
+        pendingHoleChange = nil
+        holeChangeRollbackTarget = nil
+        holeConfirmedByVoice = [:]
+        onRoundEvent?(.roundEnded(endedAt: Date()))
     }
 
     private func handleLocationUpdate(_ coordinate: Coordinate) {
         currentLocation = coordinate
-        guard activeRound != nil else { return }
-        if let updatedHoleNumber = holeDetector?.update(location: coordinate) {
-            activeRound?.currentHoleNumber = updatedHoleNumber
+        guard let round = activeRound else { return }
+
+        // A confirmation is already outstanding — hold off on evaluating
+        // further hole changes until the player answers it.
+        if pendingHoleChange == nil {
+            let previousHoleNumber = round.currentHoleNumber
+            if let updatedHoleNumber = holeDetector?.update(location: coordinate), updatedHoleNumber != previousHoleNumber {
+                pendingHoleChange = updatedHoleNumber
+                holeChangeRollbackTarget = previousHoleNumber
+            }
         }
+
+        Task { await refreshRecommendation() }
+    }
+
+    /// Called after the owning view speaks "looks like we're on the next
+    /// hole, is that correct?" and gets a voice/manual answer.
+    /// - `accepted: true` commits the GPS-suggested hole.
+    /// - `accepted: false` with `correctedHoleNumber` commits that hole instead.
+    /// - `accepted: false` with no correction rolls back to the hole before
+    ///   the pending change, so the same confirmation can be re-asked later.
+    func confirmPendingHoleChange(accepted: Bool, correctedHoleNumber: Int? = nil) {
+        guard let pending = pendingHoleChange else { return }
+
+        if accepted {
+            activeRound?.currentHoleNumber = pending
+            holeConfirmedByVoice[pending] = true
+        } else if let corrected = correctedHoleNumber {
+            holeDetector?.overrideCurrentHole(corrected)
+            activeRound?.currentHoleNumber = corrected
+            holeConfirmedByVoice[corrected] = false
+        } else if let rollback = holeChangeRollbackTarget {
+            holeDetector?.overrideCurrentHole(rollback)
+        }
+
+        pendingHoleChange = nil
+        holeChangeRollbackTarget = nil
         Task { await refreshRecommendation() }
     }
 
@@ -86,6 +139,14 @@ final class RoundSessionManager {
             )
             recommendation = result
             spokenPhrase = responsePhraser.phrase(hole: hole.number, target: .center, recommendation: result)
+            onRoundEvent?(.holeRecorded(HoleRecordSnapshot(
+                holeNumber: hole.number,
+                transitionWasConfirmedByVoice: holeConfirmedByVoice[hole.number] ?? true,
+                distanceAskedYards: result.distanceYards,
+                recommendedClub: result.recommendedClub,
+                windDescription: result.windDescription,
+                wasInterpolatedClubPick: result.isInterpolated
+            )))
         } catch {
             spokenPhrase = "Couldn't get wind data right now."
         }

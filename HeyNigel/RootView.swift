@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-/// Routes between onboarding and the active-round screen based on whether
+/// Routes between onboarding and the dashboard based on whether
 /// `UserPreferencesRecord.onboardingCompleted` has been persisted. `@Query`
 /// re-evaluates automatically once `OnboardingViewModel.complete` saves that
 /// flag, so no manual navigation state is needed here.
@@ -10,9 +10,9 @@ struct RootView: View {
 
     var body: some View {
         if preferences.first?.onboardingCompleted == true {
-            ActiveRoundView(courseDataProvider: AppDependencies.shared.courseDataProvider)
+            DashboardView(courseDataProvider: AppDependencies.shared.courseDataProvider)
         } else {
-            OnboardingContainerView(courseDataProvider: AppDependencies.shared.courseDataProvider) {}
+            OnboardingContainerView {}
         }
     }
 }

@@ -12,4 +12,11 @@ public enum CourseDataError: Error, Sendable {
 public protocol CourseDataProvider: Sendable {
     func searchCourses(query: String) async throws -> [CourseSummary]
     func fetchCourseDetail(id: String) async throws -> Course
+
+    /// Best-guess course for the player's current GPS position, used to open
+    /// round-setup with "Are we playing X today?" instead of a blind search.
+    /// Returns nil if no course is known nearby. A real vendor would run a
+    /// proper geospatial query here; `MockCourseDataProvider`'s straight-line
+    /// approximation is a placeholder until one is contracted.
+    func nearestCourse(to coordinate: Coordinate) async throws -> CourseSummary?
 }

@@ -1,49 +1,33 @@
 import SwiftUI
 
+/// Hosts the 9-club voice loop: shows progress through the list, the shared
+/// `GuidedVoicePromptView` for the current club's question, and an explicit
+/// "Skip this club" button (each club is individually skippable — a real
+/// golfer's bag rarely has all 9 of these).
 struct ClubYardagesView: View {
     var viewModel: OnboardingViewModel
 
     var body: some View {
-        VStack(spacing: 20) {
-            Text("About how far do you hit these?")
+        VStack(spacing: 16) {
+            Text("Let's add your clubs to the bag")
                 .font(.title2.bold())
-            Text("Just three clubs for now — Nigel fills in the rest of your bag from these.")
+                .multilineTextAlignment(.center)
+            Text("Club \(viewModel.currentClubIndex + 1) of \(viewModel.totalClubCount): \(viewModel.currentClubName)")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
 
-            yardageField(label: "Driver", identifier: "driverYardageField", text: Binding(
-                get: { viewModel.driverYardageText },
-                set: { viewModel.driverYardageText = $0 }
-            ))
-            yardageField(label: "7 Iron", identifier: "sevenIronYardageField", text: Binding(
-                get: { viewModel.sevenIronYardageText },
-                set: { viewModel.sevenIronYardageText = $0 }
-            ))
-            yardageField(label: "Wedge", identifier: "wedgeYardageField", text: Binding(
-                get: { viewModel.wedgeYardageText },
-                set: { viewModel.wedgeYardageText = $0 }
-            ))
+            GuidedVoicePromptView(coordinator: viewModel.guidedPrompt)
+
+            if viewModel.guidedPrompt.phase == .waitingForAnswer {
+                Button("Skip this club") { viewModel.skipCurrentClub() }
+                    .buttonStyle(.bordered)
+            }
 
             Spacer()
-
-            Button("Continue") { viewModel.advance() }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(!viewModel.canAdvanceFromClubYardages)
         }
         .padding()
-    }
-
-    private func yardageField(label: String, identifier: String, text: Binding<String>) -> some View {
-        HStack {
-            Text(label).frame(width: 90, alignment: .leading)
-            TextField("Yards", text: text)
-                .textFieldStyle(.roundedBorder)
-                .keyboardType(.numberPad)
-                .accessibilityIdentifier(identifier)
+        .task {
+            await viewModel.runClubLoop()
         }
-        .padding(.horizontal)
     }
 }

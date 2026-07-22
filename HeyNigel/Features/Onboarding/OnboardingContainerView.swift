@@ -1,14 +1,17 @@
 import SwiftUI
 import SwiftData
-import HeyNigelCourseData
 
 struct OnboardingContainerView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel: OnboardingViewModel
     let onComplete: () -> Void
 
-    init(courseDataProvider: HeyNigelCourseData.CourseDataProvider, onComplete: @escaping () -> Void) {
-        _viewModel = State(initialValue: OnboardingViewModel(courseDataProvider: courseDataProvider))
+    init(onComplete: @escaping () -> Void) {
+        let guidedPrompt = GuidedVoicePromptCoordinator(
+            captureEngine: SpeechCaptureEngine(),
+            synthesizer: SpeechSynthesizerService()
+        )
+        _viewModel = State(initialValue: OnboardingViewModel(guidedPrompt: guidedPrompt))
         self.onComplete = onComplete
     }
 
@@ -22,16 +25,28 @@ struct OnboardingContainerView: View {
                     switch viewModel.step {
                     case .welcome:
                         WelcomeView(viewModel: viewModel)
-                    case .courseSearch:
-                        CourseSearchView(viewModel: viewModel)
-                    case .teeSelection:
-                        TeeSelectionView(viewModel: viewModel)
-                    case .holeCount:
-                        HoleCountView(viewModel: viewModel)
-                    case .clubYardages:
-                        ClubYardagesView(viewModel: viewModel)
+                    case .introOne:
+                        IntroSlideView(
+                            title: "Hello, I'm Nigel",
+                            message: "I'll be your personal caddy.",
+                            buttonTitle: "Continue"
+                        ) { viewModel.advance() }
+                    case .introTwo:
+                        IntroSlideView(
+                            title: "Let's get you set up",
+                            message: "To better assist you, I will walk you through a series of questions... let's begin.",
+                            buttonTitle: "Let's Begin"
+                        ) { viewModel.advance() }
                     case .permissions:
                         PermissionsView(viewModel: viewModel)
+                    case .name:
+                        GuidedVoicePromptView(coordinator: viewModel.guidedPrompt)
+                            .task { await viewModel.runNameStep() }
+                    case .nickname:
+                        GuidedVoicePromptView(coordinator: viewModel.guidedPrompt)
+                            .task { await viewModel.runNicknameStep() }
+                    case .clubs:
+                        ClubYardagesView(viewModel: viewModel)
                     case .ready:
                         ReadyView(viewModel: viewModel) {
                             viewModel.complete(modelContext: modelContext)
@@ -43,13 +58,6 @@ struct OnboardingContainerView: View {
             }
             .navigationTitle("Set Up Nigel")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                if viewModel.step != .welcome {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Back") { viewModel.back() }
-                    }
-                }
-            }
         }
     }
 }

@@ -68,4 +68,14 @@ public struct NearestHoleDetector: HoleDetector {
 
         return currentHoleNumber
     }
+
+    /// Resets the detector to a specific hole and clears any pending
+    /// candidate/streak. Used both to roll back a hole change the player
+    /// rejected via voice confirmation, and to jump straight to a hole the
+    /// player states manually.
+    public mutating func overrideCurrentHole(_ number: Int) {
+        currentHoleNumber = number
+        pendingCandidate = nil
+        pendingStreak = 0
+    }
 }

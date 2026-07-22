@@ -1,85 +1,108 @@
 import XCTest
 
-/// Walks the entire onboarding flow plus the start of an active round,
-/// attaching a named screenshot at each screen. This isn't a correctness
-/// test so much as a way to *see* the app without a working local Xcode —
-/// CI runs this against a real Simulator and the screenshots are uploaded
-/// as a downloadable artifact.
+/// Walks the entire conversational onboarding flow, into the Dashboard, and
+/// through the voice-driven "Begin Round" setup — attaching a named
+/// screenshot at each screen. CI has no microphone signal, so every step is
+/// driven through the manual fallback controls `GuidedVoicePromptView`
+/// always shows alongside the mic button (not a failure-triggered path —
+/// the same one a real user gets on a mishear).
 final class OnboardingWalkthroughUITests: XCTestCase {
+    private let promptTimeout: TimeInterval = 12
+
     override func setUpWithError() throws {
         continueAfterFailure = false
     }
 
-    @MainActor
-    func testOnboardingAndActiveRoundWalkthrough() throws {
+    func testOnboardingDashboardAndRoundSetupWalkthrough() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-UITestReset"]
         app.launch()
 
+        // Welcome
         attach(app.screenshot(), name: "01-Welcome")
-
         app.buttons["Get Started"].tap()
 
-        let firstCourse = app.staticTexts["Sunridge Fixture Golf Club"]
-        XCTAssertTrue(firstCourse.waitForExistence(timeout: 5))
-        attach(app.screenshot(), name: "02-CourseSearch")
-
-        firstCourse.tap()
-        let courseContinue = app.buttons["Continue"]
-        waitUntilEnabled(courseContinue)
-        courseContinue.tap()
-
-        let whiteTee = app.staticTexts["White"]
-        XCTAssertTrue(whiteTee.waitForExistence(timeout: 5))
-        whiteTee.tap()
-        attach(app.screenshot(), name: "03-TeeSelection")
-        let teeContinue = app.buttons["Continue"]
-        waitUntilEnabled(teeContinue)
-        teeContinue.tap()
-
-        XCTAssertTrue(app.staticTexts["How many holes today?"].waitForExistence(timeout: 5))
-        attach(app.screenshot(), name: "04-HoleCount")
+        // Intro slides
+        XCTAssertTrue(app.staticTexts["Hello, I'm Nigel"].waitForExistence(timeout: 5))
+        attach(app.screenshot(), name: "02-IntroOne")
         app.buttons["Continue"].tap()
 
-        XCTAssertTrue(app.textFields["driverYardageField"].waitForExistence(timeout: 5))
-        app.textFields["driverYardageField"].tap()
-        app.textFields["driverYardageField"].typeText("230")
-        app.textFields["sevenIronYardageField"].tap()
-        app.textFields["sevenIronYardageField"].typeText("150")
-        app.textFields["wedgeYardageField"].tap()
-        app.textFields["wedgeYardageField"].typeText("90")
-        app.staticTexts["About how far do you hit these?"].tap()
-        attach(app.screenshot(), name: "05-ClubYardages")
-        let yardageContinue = app.buttons["Continue"]
-        waitUntilEnabled(yardageContinue)
-        yardageContinue.tap()
+        XCTAssertTrue(app.staticTexts["Let's get you set up"].waitForExistence(timeout: 5))
+        attach(app.screenshot(), name: "03-IntroTwo")
+        app.buttons["Let's Begin"].tap()
 
+        // Permissions
         XCTAssertTrue(app.staticTexts["Nigel needs a few permissions"].waitForExistence(timeout: 5))
-        attach(app.screenshot(), name: "06-Permissions")
+        attach(app.screenshot(), name: "04-Permissions")
         app.buttons["Continue"].tap()
 
-        XCTAssertTrue(app.staticTexts["You're all set"].waitForExistence(timeout: 5))
-        attach(app.screenshot(), name: "07-Ready")
-        app.buttons["Let's Play"].tap()
+        // Name
+        answerGuidedPrompt(app, text: "Jorge Castillo", screenshotName: "05-Name")
 
-        let startRoundButton = app.buttons["Start Round"]
-        XCTAssertTrue(startRoundButton.waitForExistence(timeout: 5))
-        attach(app.screenshot(), name: "08-ActiveRound-Start")
+        // Nickname
+        answerGuidedPrompt(app, text: "Ace", screenshotName: "06-Nickname")
 
-        startRoundButton.tap()
-        XCTAssertTrue(app.staticTexts["Hole 1"].waitForExistence(timeout: 5))
+        // 9-club loop
+        let yardages = ["230", "215", "195", "180", "165", "150", "135", "120", "105"]
+        for (index, yardage) in yardages.enumerated() {
+            answerGuidedPrompt(app, text: yardage, screenshotName: index == 0 ? "07-ClubLoop-Driver" : nil)
+        }
+
+        // Ready
+        XCTAssertTrue(app.staticTexts["You're all set"].waitForExistence(timeout: promptTimeout))
+        attach(app.screenshot(), name: "08-Ready")
+        app.buttons["Continue"].tap()
+
+        // Dashboard
+        let beginRound = app.buttons["Begin Round"]
+        XCTAssertTrue(beginRound.waitForExistence(timeout: 5))
+        attach(app.screenshot(), name: "09-Dashboard")
+        beginRound.tap()
+
+        // Round setup: no GPS in CI, so this waits out the location timeout
+        // (~5s) before falling back to asking the course by name — generous
+        // timeout here to cover that plus speech synthesis time.
+        answerGuidedPrompt(app, text: "Sunridge", screenshotName: "10-RoundSetup-Course", timeout: 20)
+
+        // Holes
+        answerGuidedPrompt(app, text: "18", screenshotName: "11-RoundSetup-Holes")
+
+        // Front/back nine — a direct choice tap, no review step.
+        let frontButton = app.buttons["Front"]
+        XCTAssertTrue(frontButton.waitForExistence(timeout: promptTimeout))
+        attach(app.screenshot(), name: "12-RoundSetup-Nine")
+        frontButton.tap()
+
+        // Tees — also a direct choice tap.
+        let whiteTeeButton = app.buttons["White"]
+        XCTAssertTrue(whiteTeeButton.waitForExistence(timeout: promptTimeout))
+        attach(app.screenshot(), name: "13-RoundSetup-Tees")
+        whiteTeeButton.tap()
+
+        // Active round
+        XCTAssertTrue(app.staticTexts["Hole 1"].waitForExistence(timeout: promptTimeout))
         Thread.sleep(forTimeInterval: 1.5)
-        attach(app.screenshot(), name: "09-ActiveRound-WaitingForGPS")
+        attach(app.screenshot(), name: "14-ActiveRound")
     }
 
-    @MainActor
-    private func waitUntilEnabled(_ element: XCUIElement, timeout: TimeInterval = 5) {
-        let predicate = NSPredicate(format: "isEnabled == true")
-        let expectation = expectation(for: predicate, evaluatedWith: element)
-        wait(for: [expectation], timeout: timeout)
+    /// Waits for the manual-fallback text field to appear, types the given
+    /// text, submits, then confirms the review step — the standard path for
+    /// every free-text/number question in the flow.
+    private func answerGuidedPrompt(_ app: XCUIApplication, text: String, screenshotName: String?, timeout: TimeInterval? = nil) {
+        let field = app.textFields["guidedPromptTextField"]
+        XCTAssertTrue(field.waitForExistence(timeout: timeout ?? promptTimeout))
+        if let screenshotName {
+            attach(app.screenshot(), name: screenshotName)
+        }
+        field.tap()
+        field.typeText(text)
+        app.buttons["Submit"].tap()
+
+        let confirmButton = app.buttons["Confirm"]
+        XCTAssertTrue(confirmButton.waitForExistence(timeout: 5))
+        confirmButton.tap()
     }
 
-    @MainActor
     private func attach(_ screenshot: XCUIScreenshot, name: String) {
         let attachment = XCTAttachment(screenshot: screenshot)
         attachment.name = name
