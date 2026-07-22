@@ -39,23 +39,34 @@ final class LocationManager: NSObject, CLLocationManagerDelegate {
     /// so this is safe to call even while another owner holds the callback.
     /// Resolves nil on timeout (no fix, or location not authorized yet).
     func currentLocationOnce(timeout: TimeInterval = 5) async -> Coordinate? {
+        await withCheckedContinuation { continuation in
+            Task { @MainActor in
+                self.beginOneShotLocationFetch(continuation: continuation, timeout: timeout)
+            }
+        }
+    }
+
+    /// Broken out of `currentLocationOnce` so the nested closures below are
+    /// lexically inside a MainActor-isolated method body (not directly
+    /// inside `withCheckedContinuation`'s non-isolated closure parameter),
+    /// which is what lets them mutate `onLocationUpdate` without a Swift 6
+    /// actor-isolation error.
+    private func beginOneShotLocationFetch(continuation: CheckedContinuation<Coordinate?, Never>, timeout: TimeInterval) {
         let previousHandler = onLocationUpdate
-        return await withCheckedContinuation { continuation in
-            var resumed = false
-            func finish(_ coordinate: Coordinate?) {
-                guard !resumed else { return }
-                resumed = true
-                onLocationUpdate = previousHandler
-                continuation.resume(returning: coordinate)
-            }
-            onLocationUpdate = { coordinate in
-                finish(coordinate)
-            }
-            startUpdating()
-            Task {
-                try? await Task.sleep(for: .seconds(timeout))
-                finish(nil)
-            }
+        var resumed = false
+        func finish(_ coordinate: Coordinate?) {
+            guard !resumed else { return }
+            resumed = true
+            onLocationUpdate = previousHandler
+            continuation.resume(returning: coordinate)
+        }
+        onLocationUpdate = { coordinate in
+            finish(coordinate)
+        }
+        startUpdating()
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(timeout))
+            finish(nil)
         }
     }
 
