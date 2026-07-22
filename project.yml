@@ -50,6 +50,7 @@ targets:
       base:
         SWIFT_VERSION: "6.0"
         TEST_TARGET_NAME: HeyNigel
+        GENERATE_INFOPLIST_FILE: YES
 
 schemes:
   HeyNigel:

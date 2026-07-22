@@ -66,8 +66,16 @@ jobs:
         if: always()
         run: |
           mkdir -p screenshots
+          echo "--- xcresulttool test-results attachments help ---"
+          xcrun xcresulttool get test-results attachments --help || true
           xcrun xcresulttool get test-results attachments \
             --path TestResults.xcresult \
+            --output-path screenshots \
+          || xcrun xcresulttool get test-results attachments \
+            TestResults.xcresult \
+            --output-path screenshots \
+          || xcrun xcresulttool get test-results attachments \
+            --test-results-path TestResults.xcresult \
             --output-path screenshots
       - name: Upload screenshots artifact
         if: always()
