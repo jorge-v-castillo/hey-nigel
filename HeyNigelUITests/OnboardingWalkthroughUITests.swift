@@ -10,6 +10,7 @@ final class OnboardingWalkthroughUITests: XCTestCase {
         continueAfterFailure = false
     }
 
+    @MainActor
     func testOnboardingAndActiveRoundWalkthrough() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-UITestReset"]
@@ -71,12 +72,14 @@ final class OnboardingWalkthroughUITests: XCTestCase {
         attach(app.screenshot(), name: "09-ActiveRound-WaitingForGPS")
     }
 
+    @MainActor
     private func waitUntilEnabled(_ element: XCUIElement, timeout: TimeInterval = 5) {
         let predicate = NSPredicate(format: "isEnabled == true")
         let expectation = expectation(for: predicate, evaluatedWith: element)
         wait(for: [expectation], timeout: timeout)
     }
 
+    @MainActor
     private func attach(_ screenshot: XCUIScreenshot, name: String) {
         let attachment = XCTAttachment(screenshot: screenshot)
         attachment.name = name
